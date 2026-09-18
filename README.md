@@ -71,7 +71,7 @@ rollback switch.
 | `syncInterval(Duration)` | 1h | Epoch length. Bounds how stale a lane may silently become. |
 | `maxBuffered(int)` | 500,000 | Records held **per subtask**. Multiply by parallelism for the heap ceiling. |
 | `failOnOverflow(boolean)` | false | `true` fails the task on overflow; `false` releases early with a WARN. |
-| `idleBackstop(Duration)` | 30s | How long a subtask may be held before it releases with a WARN. |
+| `idleBackstop(Duration)` | 5m | How long a subtask may be held before it releases ungated (first time at ERROR). Size it above your largest lane's replay time; it is a wedge guard, not a cold-start tuning knob. |
 | `clock(Clock)` | system UTC | Test seam. Must be `Serializable` and agree with processing time. |
 | `enabled(boolean)` | true | `false` is a passthrough that keeps uids and drains restored state. |
 
@@ -89,7 +89,8 @@ tracker keyed state `highestOffset` and `declaredEpoch`. Pin the uid set in a te
 
 ### Metrics
 
-Counters `evalGateHeld`, `evalGateReleased`, `evalGateOverflow`, `evalGateIdleRelease`; gauges
+Counters `evalGateHeld` (records that entered the buffer), `evalGateReleased` (every record leaving the
+gate, drained or pass-through, so steady-state throughput), `evalGateOverflow`, `evalGateIdleRelease`; gauges
 `evalGateWaiting` (buffered records on this subtask) and `evalGateOpen` (0/1). Per lane, under
 `bullseye.lane.<id>`: `probes`, `probeFailures`, `markers`.
 

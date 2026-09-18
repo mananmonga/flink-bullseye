@@ -47,7 +47,10 @@ import org.slf4j.LoggerFactory;
  * {@code isOpen()} is trivially true and the restored buffer would otherwise be silently dropped
  * while {@code snapshotState} kept rewriting it into every checkpoint.
  *
- * <p>Metric names are frozen; dashboards depend on them.
+ * <p>Metric names <em>and semantics</em> are frozen; dashboards depend on them.
+ * {@code evalGateReleased} counts every record that leaves the gate, drained or passed straight
+ * through, so in steady state it is throughput. {@code evalGateHeld} counts records that entered
+ * the buffer.
  */
 @Internal
 public final class BullseyeGate<T> extends BroadcastProcessFunction<T, LaneReady, T>
@@ -142,7 +145,7 @@ public final class BullseyeGate<T> extends BroadcastProcessFunction<T, LaneReady
         long now = clock.millis();
         if (isOpen(ctx.getBroadcastState(READY_STATE), now)) {
             drain(out);
-            out.collect(value);
+            emit(value, out);
             return;
         }
         if (heldSince < 0) {
@@ -150,18 +153,21 @@ public final class BullseyeGate<T> extends BroadcastProcessFunction<T, LaneReady
         }
         if (now - heldSince >= idleBackstopMillis) {
             long epoch = epochs.epochAt(now);
-            LOG.warn(
-                    "barrier held for {} ms (backstop {} ms) with {} buffered; releasing for epoch {} — missing: {}",
-                    now - heldSince,
-                    idleBackstopMillis,
-                    buffer.size(),
-                    epoch,
-                    Readiness.missing(lanes, epoch, ctx.getBroadcastState(READY_STATE)::get));
+            List<String> missing = Readiness.missing(lanes, epoch, ctx.getBroadcastState(READY_STATE)::get);
+            String msg = "barrier held for {} ms (backstop {} ms) with {} buffered; releasing UNGATED for epoch {}"
+                    + " — downstream joins may now miss. Missing: {}";
+            if (idleRelease.getCount() == 0) {
+                // The first idle release on a fresh job is almost always a cold start that outran the
+                // backstop, which is the exact failure this gate exists to prevent. Shout.
+                LOG.error(msg, now - heldSince, idleBackstopMillis, buffer.size(), epoch, missing);
+            } else {
+                LOG.warn(msg, now - heldSince, idleBackstopMillis, buffer.size(), epoch, missing);
+            }
             idleRelease.inc();
             forcedOpenEpoch = epoch;
             lastOpen = true;
             drain(out);
-            out.collect(value);
+            emit(value, out);
             return;
         }
         if (buffer.size() >= maxBuffered) {
@@ -181,7 +187,7 @@ public final class BullseyeGate<T> extends BroadcastProcessFunction<T, LaneReady
             forcedOpenEpoch = epoch;
             lastOpen = true;
             drain(out);
-            out.collect(value);
+            emit(value, out);
             return;
         }
         buffer.add(value);
@@ -216,6 +222,11 @@ public final class BullseyeGate<T> extends BroadcastProcessFunction<T, LaneReady
         return open;
     }
 
+    private void emit(T value, Collector<T> out) {
+        out.collect(value);
+        released.inc();
+    }
+
     private void drain(Collector<T> out) {
         heldSince = -1L;
         if (buffer.isEmpty()) {
@@ -223,10 +234,19 @@ public final class BullseyeGate<T> extends BroadcastProcessFunction<T, LaneReady
         }
         int n = buffer.size();
         for (T t : buffer) {
-            out.collect(t);
+            emit(t, out);
         }
         buffer.clear();
-        released.inc(n);
         LOG.info("barrier released {} buffered records", n);
+    }
+
+    /** Test seam: current value of {@code evalGateReleased}. */
+    long releasedCount() {
+        return released.getCount();
+    }
+
+    /** Test seam: current value of {@code evalGateHeld}. */
+    long heldCount() {
+        return held.getCount();
     }
 }

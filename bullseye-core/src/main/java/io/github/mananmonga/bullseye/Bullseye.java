@@ -67,7 +67,7 @@ public final class Bullseye<T> {
 
     private static final int DEFAULT_MAX_BUFFERED = 500_000;
     private static final Duration DEFAULT_SYNC_INTERVAL = Duration.ofHours(1);
-    private static final Duration DEFAULT_IDLE_BACKSTOP = Duration.ofSeconds(30);
+    private static final Duration DEFAULT_IDLE_BACKSTOP = Duration.ofMinutes(5);
 
     private final TypeInformation<T> type;
     private final List<Registration<?>> lanes = new ArrayList<>();
@@ -155,8 +155,11 @@ public final class Bullseye<T> {
 
     /**
      * How long a subtask may be <em>held</em> (measured from its first buffered record in the
-     * current closed spell) before it releases with a WARN. Default 30s. This is the degradation
-     * path that keeps a wedged side input from stalling the job forever.
+     * current closed spell) before it releases ungated. Default 5 minutes. This is the degradation
+     * path that keeps a wedged side input from stalling the job forever; it is <b>not</b> a tuning
+     * knob for cold start. Size it above the time your largest lane takes to replay from empty, or
+     * the first bootstrap will outrun it, release with an ERROR, and the joins will miss exactly as
+     * they would without the barrier. Set {@link #maxBuffered} to bound memory instead.
      */
     public Bullseye<T> idleBackstop(Duration d) {
         Objects.requireNonNull(d, "idleBackstop");

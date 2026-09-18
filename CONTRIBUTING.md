@@ -7,3 +7,8 @@
   exists because the obvious simplification broke silently.
 - Keep `bullseye-core` free of Kafka types and both modules free of `implementation` dependencies on
   Flink.
+- Any launcher JDK 17 or newer works. The wrapper pins Gradle 9.x and `gradle/gradle-daemon-jvm.properties`
+  pins the daemon to a JDK 21 that Gradle provisions itself, so the JVM on your `PATH` only launches
+  the client. If you ever see a build fail with nothing but a bare version string such as `25.0.3`
+  as the error, that is an older Gradle's embedded Kotlin compiler choking on a new JDK; run
+  `./gradlew --version` and make sure the wrapper is what is running.

@@ -169,6 +169,22 @@ class BullseyeGateTest {
     }
 
     @Test
+    void releasedCountsEveryRecordLeavingTheGateNotJustDrained() throws Exception {
+        BullseyeGate<String> g = gate(false, true);
+        start(g);
+        main("a");
+        main("b");
+        assertThat(g.heldCount()).isEqualTo(2);
+        assertThat(g.releasedCount()).isZero();
+        allReady(10);
+        assertThat(g.releasedCount()).as("drained").isEqualTo(2);
+        main("c");
+        main("d");
+        assertThat(g.releasedCount()).as("pass-through keeps counting: steady-state throughput").isEqualTo(4);
+        assertThat(g.heldCount()).isEqualTo(2);
+    }
+
+    @Test
     void disabledIsPassthrough() throws Exception {
         start(gate(false, false));
         main("a");

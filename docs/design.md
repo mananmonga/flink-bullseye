@@ -181,7 +181,17 @@ Each is load-bearing and non-obvious. A well-meaning simplification breaks each 
 12. **Gating and splitting stay separate operators.** Folding a side-output split into the barrier
     fails: draining must be callable from the broadcast side, and a broadcast-side `Collector` has
     no `output(OutputTag, ...)`.
-13. **Overflow and idle releases force the gate open for the rest of the epoch.** Releasing and
+13. **`evalGateReleased` counts every record leaving the gate, not only drained ones.** In steady
+    state it is throughput. A rate alert on it must keep reading during normal operation; counting
+    only drains would make the counter go flat exactly when the job is healthy.
+14. **The idle backstop default is 5 minutes and the first idle release logs at ERROR.** The
+    originating job used 30s, tuned to its topic sizes. As a library default 30s is misleading: an
+    adopter bootstrapping a large changelog outruns it during precisely the cold start the barrier
+    exists to protect, gets one WARN and an ungated release, and concludes the barrier works. The
+    backstop is a wedge guard, sized above the largest lane's replay time; `maxBuffered` bounds
+    memory. It stays opt-out rather than opt-in because a job that can never release is worse than
+    one that releases loudly.
+15. **Overflow and idle releases force the gate open for the rest of the epoch.** Releasing and
     immediately re-holding would overflow again within seconds and turn a degradation into a
     sawtooth. The gate re-arms at the next boundary.
 
