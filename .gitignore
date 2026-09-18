@@ -1,0 +1,9 @@
+.gradle/
+build/
+out/
+.idea/
+*.iml
+.DS_Store
+.kotlin/
+smoke-consumer/.gradle/
+smoke-consumer/build/
