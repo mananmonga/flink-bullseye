@@ -21,8 +21,8 @@ java {
 }
 
 dependencies {
-    implementation("io.github.mananmonga:barrier-core:$barrierVersion")
-    implementation("io.github.mananmonga:barrier-kafka:$barrierVersion")
+    implementation("io.github.mananmonga:bullseye-core:$barrierVersion")
+    implementation("io.github.mananmonga:bullseye-kafka:$barrierVersion")
     implementation("org.apache.flink:flink-streaming-java:$flinkVersion")
     implementation("org.apache.flink:flink-clients:$flinkVersion")
     implementation("org.apache.flink:flink-connector-kafka:3.4.0-1.20")

@@ -3,6 +3,6 @@ plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "0.9.0"
 }
 
-rootProject.name = "flink-side-input-barrier"
+rootProject.name = "flink-bullseye"
 
-include("barrier-core", "barrier-kafka")
+include("bullseye-core", "bullseye-kafka")

@@ -1,4 +1,4 @@
-# flink-side-input-barrier
+# flink-bullseye
 
 A periodic **re-sync barrier** for keyed-state side inputs in Apache Flink DataStream jobs.
 
@@ -14,7 +14,7 @@ turns "complete once at t=0" into **bounded staleness**, and it is the only vari
 detects a consumer that silently drifts behind later.
 
 - **Flink 1.20**, Java 17 bytecode, Apache-2.0.
-- `barrier-core` depends on Flink only. `barrier-kafka` adds a Kafka end-offset probe and an
+- `bullseye-core` depends on Flink only. `bullseye-kafka` adds a Kafka end-offset probe and an
   offset-carrying envelope. A Pulsar or Fluss user implements one interface and skips the Kafka
   module entirely.
 - Flink is `compileOnly`. Nothing here ends up in your shaded jar except this library.
@@ -23,13 +23,13 @@ detects a consumer that silently drifts behind later.
 
 ```kotlin
 dependencies {
-    implementation("io.github.mananmonga:barrier-core:0.1.0")
-    implementation("io.github.mananmonga:barrier-kafka:0.1.0")   // Kafka users only
+    implementation("io.github.mananmonga:bullseye-core:0.1.0")
+    implementation("io.github.mananmonga:bullseye-kafka:0.1.0")   // Kafka users only
 }
 ```
 
 Both artifacts are published to Maven Central. Your build already provides Flink and, if you use
-`barrier-kafka`, `flink-connector-kafka` with its `kafka-clients`.
+`bullseye-kafka`, `flink-connector-kafka` with its `kafka-clients`.
 
 ## Use
 
@@ -46,7 +46,7 @@ DataStream<KafkaEnvelope<Rule>> rules = env.fromSource(rulesSource, noWatermarks
 // Partition counts are probed once, at submission. A lane that cannot be counted must not submit.
 int rulePartitions = KafkaEndOffsetProbe.partitionCount("rules", kafka);
 
-DataStream<Observation> gated = SideInputBarrier.forType(TypeInformation.of(Observation.class))
+DataStream<Observation> gated = Bullseye.forType(TypeInformation.of(Observation.class))
         .lane(Lane.of("rule", rulePartitions, KafkaEndOffsetProbe.of("rules", kafka)),
               rules, KafkaEnvelope::getPartition, KafkaEnvelope::getOffset)
         .barrierUid("eval-gate")                 // required, frozen: your savepoint contract
@@ -85,13 +85,13 @@ rollback switch.
 
 State names are frozen too: operator list state `barrierBuffer`, broadcast state `readyState`,
 tracker keyed state `highestOffset` and `declaredEpoch`. Pin the uid set in a test in your job;
-`SideInputBarrierTest.uidDerivationReproducesTheFrozenContract` shows how.
+`BullseyeTest.uidDerivationReproducesTheFrozenContract` shows how.
 
 ### Metrics
 
 Counters `evalGateHeld`, `evalGateReleased`, `evalGateOverflow`, `evalGateIdleRelease`; gauges
 `evalGateWaiting` (buffered records on this subtask) and `evalGateOpen` (0/1). Per lane, under
-`sideInputBarrier.lane.<id>`: `probes`, `probeFailures`, `markers`.
+`bullseye.lane.<id>`: `probes`, `probeFailures`, `markers`.
 
 ## What it guarantees, and what it does not
 

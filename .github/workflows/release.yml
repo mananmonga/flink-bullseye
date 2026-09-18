@@ -43,5 +43,5 @@ jobs:
         with:
           generate_release_notes: true
           files: |
-            barrier-core/build/libs/*.jar
-            barrier-kafka/build/libs/*.jar
+            bullseye-core/build/libs/*.jar
+            bullseye-kafka/build/libs/*.jar

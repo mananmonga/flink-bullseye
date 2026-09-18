@@ -1,9 +1,9 @@
 package smoke;
 
-import io.github.mananmonga.flink.barrier.EndOffsetProbe;
-import io.github.mananmonga.flink.barrier.Lane;
-import io.github.mananmonga.flink.barrier.SideInputBarrier;
-import io.github.mananmonga.flink.barrier.kafka.KafkaEnvelope;
+import io.github.mananmonga.bullseye.EndOffsetProbe;
+import io.github.mananmonga.bullseye.Lane;
+import io.github.mananmonga.bullseye.Bullseye;
+import io.github.mananmonga.bullseye.kafka.KafkaEnvelope;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -45,7 +45,7 @@ public final class SmokeJob {
                         KafkaEnvelope.typeInfo(Types.STRING));
         DataStream<String> main = env.fromData("x", "y", "z");
 
-        DataStream<String> gated = SideInputBarrier.forType(Types.STRING)
+        DataStream<String> gated = Bullseye.forType(Types.STRING)
                 .lane(Lane.of("smoke", 2, new FixedProbe()), side, KafkaEnvelope::getPartition, KafkaEnvelope::getOffset)
                 .barrierUid("smoke-gate")
                 .syncInterval(Duration.ofDays(3650))

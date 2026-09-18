@@ -77,7 +77,7 @@ so no second repository block and no personal access token. Personal-account Git
 rejected: production builds would authenticate against a PAT the organisation cannot rotate, audit
 or inherit.
 
-**D2. Two modules.** `barrier-core` is Flink-only. `barrier-kafka` holds the end-offset probe and
+**D2. Two modules.** `bullseye-core` is Flink-only. `bullseye-kafka` holds the end-offset probe and
 the offset-carrying envelope. `EndOffsetProbe` is free of Flink and Kafka types, so a non-Kafka user
 implements one interface without pulling the Kafka client.
 
@@ -101,7 +101,7 @@ Product-specific details came out on the way: the broker ACL note became a calle
 **D7. Operator uids are caller-supplied and frozen.** A library must never invent a uid it could
 silently change between versions; a rename makes every consumer's savepoint unrestorable.
 `barrierUid` is required and per-lane uids derive deterministically from the lane id. The
-derivation is documented as frozen (`BarrierUids`). State names and metric names are frozen for the
+derivation is documented as frozen (`BullseyeUids`). State names and metric names are frozen for the
 same reason.
 
 **D8. Per-key bounded holds stay in the consumer.** A "hold this key for 30s or one epoch, then
@@ -110,7 +110,7 @@ opinions about dead-lettering. Out of scope for v1.
 
 **D9. Readiness transport sits behind an internal seam.** Marker delivery never appears in the
 public API. On 1.20 it is a broadcast stream; on 2.x it should be FLIP-467 generalized watermarks.
-Concretely: `SideInputBarrier.apply()` owns all wiring and never accepts or returns the marker
+Concretely: `Bullseye.apply()` owns all wiring and never accepts or returns the marker
 stream; `LaneReady`, `LaneOffset` and the broadcast state descriptor are `@Internal`; and the "has
 every expected partition declared epoch ≥ N" predicate lives in one place (`Readiness`) with no
 Flink transport types in its signature. If the transport is swappable, v2 is a transport change; if
@@ -118,8 +118,8 @@ Flink transport types in its signature. If the transport is swappable, v2 is a t
 
 ## Public API
 
-One builder (`SideInputBarrier`), one value type (`Lane`), one interface (`EndOffsetProbe`), one
-uid helper (`BarrierUids`). Everything else is `@Internal`.
+One builder (`Bullseye`), one value type (`Lane`), one interface (`EndOffsetProbe`), one
+uid helper (`BullseyeUids`). Everything else is `@Internal`.
 
 Decisions worth stating:
 
@@ -190,7 +190,7 @@ Each is load-bearing and non-obvious. A well-meaning simplification breaks each 
 - **Group id.** `io.github.mananmonga` is the no-domain fallback the Central Portal grants a verified
   GitHub account. An owned domain is preferable and can be swapped in `gradle.properties` before
   the first release; after it, the coordinate is frozen by the consumers that depend on it.
-- **Artifact ids** are the module names, `barrier-core` and `barrier-kafka`. Also frozen after the
+- **Artifact ids** are the module names, `bullseye-core` and `bullseye-kafka`. Also frozen after the
   first release.
 - **Apache-2.0 from the first commit**, so any organisation can fork and republish under its own
   group id without needing anything from the original author.
